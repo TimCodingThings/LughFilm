@@ -1,6 +1,6 @@
 # Framekey
 
-Framekey is a private, on-device esports video review studio. Review gameplay frame by frame, annotate decisions, mark important moments, record coaching sessions, and make basic edits without uploading source footage to a third-party service.
+Framekey is a private, on-device video review studio. Review gameplay frame by frame, annotate decisions, mark important moments, record coaching sessions, and make basic edits without uploading source footage to a third-party service.
 
 [**Download the latest Framekey ZIP**](https://github.com/TimCodingThings/framekey/archive/refs/heads/main.zip)
 
