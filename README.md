@@ -8,11 +8,13 @@ Framekey is a private, on-device video review studio. Review gameplay frame by f
 
 1. Download the ZIP above and extract it.
 2. Open the `Framekey` folder.
-3. Double-click `Framekey.exe` and keep its small server window open.
+3. Double-click `Framekey.exe`. Framekey stays available from the Windows system tray after the browser closes.
 4. Framekey opens at `http://127.0.0.1:8765` in your browser.
 5. Drop in an MP4, open an existing local project, or use the Downloader tab.
 
 If Windows SmartScreen appears for this unsigned community build, select **More info** and then **Run anyway**.
+
+Bookmarks to `127.0.0.1:8765` work while the Framekey tray application is running. After restarting Windows or choosing **Exit Framekey** from the tray menu, launch `Framekey.exe` before opening the bookmark.
 
 The Windows package includes its own Java runtime and `yt-dlp`. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
 
