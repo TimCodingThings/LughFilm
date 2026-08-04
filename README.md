@@ -2,23 +2,26 @@
 
 Framekey is a private, on-device video review studio. Review gameplay frame by frame, annotate decisions, mark important moments, record coaching sessions, and make basic edits without uploading source footage to a third-party service.
 
-[**Download the latest Framekey ZIP**](https://github.com/TimCodingThings/framekey/archive/refs/heads/main.zip)
+[**Download the latest Framekey ZIP**](https://github.com/TimCodingThings/framekey/raw/main/dist/Framekey-Windows.zip)
 
 ## Quick start
 
 1. Download the ZIP above and extract it.
-2. Double-click `start-framekey.bat`.
-3. Framekey opens at `http://127.0.0.1:8765` in your browser.
-4. Drop in an MP4, open an existing local project, or use the Downloader tab.
+2. Open the `Framekey` folder.
+3. Double-click `Framekey.exe` and keep its small server window open.
+4. Framekey opens at `http://127.0.0.1:8765` in your browser.
+5. Drop in an MP4, open an existing local project, or use the Downloader tab.
 
-Opening `framekey.html` directly also works for local video review and editing. The Downloader tab requires `start-framekey.bat` because a browser cannot run `yt-dlp` by itself.
+If Windows SmartScreen appears for this unsigned community build, select **More info** and then **Run anyway**.
+
+The Windows package includes its own Java runtime and `yt-dlp`. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
 
 ## Requirements
 
-- Windows with a modern version of Chrome or Edge
-- Java 17 or newer
-- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) for link-based downloads
-- FFmpeg available to `yt-dlp` for combining or converting video and audio when required
+- Windows 10 or newer
+- A modern version of Chrome or Edge
+
+Developers running the source version through `start-framekey.bat` need Java 17 or newer. Opening `framekey.html` directly works for review and editing, but not link-based downloading.
 
 ## Review studio
 
@@ -110,8 +113,10 @@ Framekey does not require an account and does not upload review projects to a Fr
 
 - `framekey.html` — complete Framekey interface and browser application
 - `FramekeyServer.java` — local web server and `yt-dlp` bridge
-- `start-framekey.bat` — Windows launcher
+- `start-framekey.bat` — source-mode Windows launcher
+- `build-framekey-exe.ps1` — reproducible Windows package build script
+- `dist/Framekey-Windows.zip` — ready-to-run public Windows package
 
 ## Updating
 
-Download the latest ZIP again whenever you want the newest version. Existing projects are stored in the browser profile associated with `http://127.0.0.1:8765`, so replacing the application files normally does not remove those projects.
+Download the latest Windows ZIP again whenever you want the newest version. Existing projects are stored in the browser profile associated with `http://127.0.0.1:8765`, so replacing the application files normally does not remove those projects.
