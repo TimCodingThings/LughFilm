@@ -13,7 +13,7 @@ javac --add-modules jdk.httpserver -d $classes (Join-Path $root "FramekeyServer.
 Copy-Item (Join-Path $root "framekey.html") (Join-Path $classes "framekey.html")
 jar --create --file (Join-Path $inputDir "framekey.jar") --main-class FramekeyServer -C $classes .
 
-jpackage --type app-image --name Framekey --input $inputDir --main-jar framekey.jar --main-class FramekeyServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --win-console --java-options "-Dfile.encoding=UTF-8"
+jpackage --type app-image --name Framekey --input $inputDir --main-jar framekey.jar --main-class FramekeyServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\framekey-icon.ico") --win-console --java-options "-Dfile.encoding=UTF-8"
 
 $bundledYtDlp = Join-Path $root "vendor\yt-dlp.exe"
 $ytDlp = Get-Command yt-dlp -ErrorAction SilentlyContinue
