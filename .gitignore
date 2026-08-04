@@ -1,0 +1,16 @@
+# Java build output
+*.class
+
+# Downloaded/local video files
+downloads/
+*.mp4
+*.webm
+*.mkv
+*.mov
+
+# Local editor metadata
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
