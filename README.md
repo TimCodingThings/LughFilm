@@ -33,12 +33,12 @@ Developers running the source version through `start-lughfilm.bat` need Java 17 
 - Playback speeds from `0.1×` through `2×`
 - Previous-frame and next-frame controls with estimated frame numbers
 - Zoom, pan, zoom reset, mute, and pointer mode
-- Fullscreen playback with a dedicated progress bar and timestamp markers
+- Fullscreen playback with a dedicated progress bar, timestamp markers, and video-volume slider
 - Fullscreen annotation dock that can be shown or hidden
 - Pen, arrow, and circle annotations in multiple colors
 - Undo with the toolbar or `Ctrl+Z`, plus clear-all controls
-- Gameplay timestamps and categorized markers displayed on the progress bar
-- Marker categories for key plays, eliminations, deaths, objectives, team fights, rotations, utility, and mistakes
+- Gameplay timestamps displayed on the progress bar
+- Preset marker colors: red, green, blue, yellow, orange, white, purple, and cyan
 - Timestamped marker notes suitable for coaching review
 
 ## Coaching recording and export
@@ -90,11 +90,15 @@ Only download footage you own or have permission to use. Site compatibility depe
 - Brightness, contrast, and saturation adjustment
 - Detach source audio into its own timeline track
 - Independent detached-audio timing controls
-- Basic rectangle, circle, and arrow overlays
+- Rectangle, circle, arrow, and text/title overlays
 - Editable shape color, opacity, fill opacity, blur, position, and dimensions
 - Drag shapes around the preview and resize them from their edges
 - Individual shape timeline tracks with draggable start/end handles
-- Delete selected shapes
+- Duplicate overlays and change their layer order
+- Original, 16:9, 9:16, 1:1, and 4:3 export aspect ratios
+- Video and audio fade-in/fade-out controls
+- Full-width responsive editor that fits the browser viewport
+- Delete selected overlays
 - Export the edited result as MP4
 
 ## Administration and customization
