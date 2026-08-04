@@ -2,7 +2,7 @@
 
 LughFilm is a private, on-device video review studio. Review gameplay frame by frame, annotate decisions, mark important moments, record coaching sessions, and make basic edits without uploading source footage to a third-party service.
 
-[**Download the latest LughFilm ZIP**](https://github.com/TimCodingThings/framekey/raw/main/dist/LughFilm-Windows.zip)
+[**Download the latest LughFilm ZIP**](https://github.com/TimCodingThings/LughFilm/raw/main/dist/LughFilm-Windows.zip)
 
 ## Quick start
 
