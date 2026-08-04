@@ -23,7 +23,7 @@ The Windows package includes its own Java runtime and `yt-dlp`. Recipients do no
 - Windows 10 or newer
 - A modern version of Chrome or Edge
 
-Developers running the source version through `start-lughfilm.bat` need Java 17 or newer. Opening `framekey.html` directly works for review and editing, but not link-based downloading.
+Developers running the source version through `start-lughfilm.bat` need Java 17 or newer. Opening `lughfilm.html` directly works for review and editing, but not link-based downloading.
 
 ## Review studio
 
@@ -113,8 +113,8 @@ LughFilm does not require an account and does not upload review projects to a Lu
 
 ## Files
 
-- `framekey.html` — complete LughFilm interface and browser application
-- `FramekeyServer.java` — local web server and `yt-dlp` bridge
+- `lughfilm.html` — complete LughFilm interface and browser application
+- `LughFilmServer.java` — local web server and `yt-dlp` bridge
 - `start-lughfilm.bat` — source-mode Windows launcher
 - `build-lughfilm-exe.ps1` — reproducible Windows package build script
 - `dist/LughFilm-Windows.zip` — ready-to-run public Windows package

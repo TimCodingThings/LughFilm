@@ -9,12 +9,12 @@ Remove-Item -Recurse -Force $build -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $dist "LughFilm") -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $inputDir, $classes, $dist | Out-Null
 
-javac --add-modules jdk.httpserver -d $classes (Join-Path $root "FramekeyServer.java")
-Copy-Item (Join-Path $root "framekey.html") (Join-Path $classes "framekey.html")
+javac --add-modules jdk.httpserver -d $classes (Join-Path $root "LughFilmServer.java")
+Copy-Item (Join-Path $root "lughfilm.html") (Join-Path $classes "lughfilm.html")
 Copy-Item (Join-Path $root "assets\lughfilm-icon.png") (Join-Path $classes "lughfilm-icon.png")
-jar --create --file (Join-Path $inputDir "lughfilm.jar") --main-class FramekeyServer -C $classes .
+jar --create --file (Join-Path $inputDir "lughfilm.jar") --main-class LughFilmServer -C $classes .
 
-jpackage --type app-image --name LughFilm --input $inputDir --main-jar lughfilm.jar --main-class FramekeyServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\lughfilm-icon.ico") --java-options "-Dfile.encoding=UTF-8"
+jpackage --type app-image --name LughFilm --input $inputDir --main-jar lughfilm.jar --main-class LughFilmServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\lughfilm-icon.ico") --java-options "-Dfile.encoding=UTF-8"
 
 $bundledYtDlp = Join-Path $root "vendor\yt-dlp.exe"
 $ytDlp = Get-Command yt-dlp -ErrorAction SilentlyContinue
