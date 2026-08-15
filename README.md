@@ -70,6 +70,7 @@ Browser storage capacity varies by device and browser. Large projects may be lim
 
 - Paste a supported video-site link into a dedicated Downloader tab
 - Uses local `yt-dlp` processing
+- Downloads the best available video and audio streams and merges them without re-encoding
 - Downloads one video at a time and targets MP4 output
 - Automatically creates a new LughFilm Review project when finished
 - Keeps temporary download processing on the local computer

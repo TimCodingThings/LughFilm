@@ -21,6 +21,13 @@ $ytDlp = Get-Command yt-dlp -ErrorAction SilentlyContinue
 if (Test-Path $bundledYtDlp) { Copy-Item $bundledYtDlp (Join-Path $dist "LughFilm\app\yt-dlp.exe") }
 elseif ($ytDlp) { Copy-Item $ytDlp.Source (Join-Path $dist "LughFilm\app\yt-dlp.exe") }
 
+$bundledFfmpeg = Join-Path $root "vendor\ffmpeg.exe"
+$bundledFfprobe = Join-Path $root "vendor\ffprobe.exe"
+$ffmpegLicense = Join-Path $root "vendor\FFmpeg-LICENSE.txt"
+if (Test-Path $bundledFfmpeg) { Copy-Item $bundledFfmpeg (Join-Path $dist "LughFilm\app\ffmpeg.exe") }
+if (Test-Path $bundledFfprobe) { Copy-Item $bundledFfprobe (Join-Path $dist "LughFilm\app\ffprobe.exe") }
+if (Test-Path $ffmpegLicense) { Copy-Item $ffmpegLicense (Join-Path $dist "LughFilm\app\FFmpeg-LICENSE.txt") }
+
 $zip = Join-Path $dist "LughFilm-Windows.zip"
 Remove-Item -Force $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $dist "LughFilm") -DestinationPath $zip -CompressionLevel Optimal
