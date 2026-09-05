@@ -17,6 +17,9 @@ jar --create --file (Join-Path $inputDir "lughfilm.jar") --main-class LughFilmSe
 jpackage --type app-image --name LughFilm --input $inputDir --main-jar lughfilm.jar --main-class LughFilmServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\lughfilm-icon.ico") --java-options "-Dfile.encoding=UTF-8"
 
 $bundledYtDlp = Join-Path $root "vendor\yt-dlp.exe"
+$bundledDeno = Join-Path $root "vendor\deno.exe"
+if (!(Test-Path -LiteralPath $bundledDeno)) { throw "Missing vendor/deno.exe: YouTube imports require the Deno JavaScript runtime." }
+Copy-Item -LiteralPath $bundledDeno -Destination (Join-Path $dist "LughFilm\app\deno.exe")
 $ytDlp = Get-Command yt-dlp -ErrorAction SilentlyContinue
 if (Test-Path $bundledYtDlp) { Copy-Item $bundledYtDlp (Join-Path $dist "LughFilm\app\yt-dlp.exe") }
 elseif ($ytDlp) { Copy-Item $ytDlp.Source (Join-Path $dist "LughFilm\app\yt-dlp.exe") }
@@ -31,4 +34,13 @@ if (Test-Path $ffmpegLicense) { Copy-Item $ffmpegLicense (Join-Path $dist "LughF
 $zip = Join-Path $dist "LughFilm-Windows.zip"
 Remove-Item -Force $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $dist "LughFilm") -DestinationPath $zip -CompressionLevel Optimal
+# Keep repository downloads below GitHub's per-file limit; the app image still includes Deno.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [IO.Compression.ZipFile]::Open($zip, 'Update')
+try {
+    $entry = $archive.Entries | Where-Object { $_.FullName -match '[/\\]deno.exe$' }
+    if (!$entry) { throw "Deno is missing from the package." }
+    $entry.Delete()
+} finally { $archive.Dispose() }
+Compress-Archive -LiteralPath $bundledDeno -DestinationPath (Join-Path $dist "LughFilm-Deno.zip") -CompressionLevel Optimal -Force
 Write-Host "Built $zip"

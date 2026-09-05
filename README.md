@@ -7,16 +7,17 @@ LughFilm is a private, on-device video review studio. Review gameplay frame by f
 ## Quick start
 
 1. Download the ZIP above and extract it.
-2. Open the `LughFilm` folder.
-3. Double-click `LughFilm.exe`. LughFilm stays available from the Windows system tray after the browser closes.
-4. LughFilm opens at `http://127.0.0.1:8765` in your browser.
-5. Drop in an MP4, open an existing local project, or use the Downloader tab.
+2. Download the [Deno companion ZIP](https://github.com/TimCodingThings/LughFilm/raw/main/dist/LughFilm-Deno.zip) and extract `deno.exe` into `LughFilm/app/`. This separate download keeps each ZIP within GitHub's file-size limit.
+3. Open the `LughFilm` folder.
+4. Double-click `LughFilm.exe`. LughFilm stays available from the Windows system tray after the browser closes.
+5. LughFilm opens at `http://127.0.0.1:8765` in your browser.
+6. Drop in an MP4, open an existing local project, or use the Downloader tab.
 
 If Windows SmartScreen appears for this unsigned community build, select **More info** and then **Run anyway**.
 
 Bookmarks to `127.0.0.1:8765` work while the LughFilm tray application is running. After restarting Windows or choosing **Exit LughFilm** from the tray menu, launch `LughFilm.exe` before opening the bookmark.
 
-The Windows package includes its own Java runtime and `yt-dlp`. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
+The Windows package includes its own Java runtime, FFmpeg, and `yt-dlp`; the companion ZIP supplies Deno. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
 
 ## Requirements
 
@@ -70,9 +71,11 @@ Browser storage capacity varies by device and browser. Large projects may be lim
 
 - Paste a supported video-site link into a dedicated Downloader tab
 - Uses local `yt-dlp` processing
-- Downloads the best available video and audio streams and merges them without re-encoding
+- Prefers the best available MP4 video and M4A audio streams and merges them without re-encoding
 - Downloads one video at a time and targets MP4 output
-- Automatically creates a new LughFilm Review project when finished
+- **Download to Review** creates a new LughFilm Review project when finished
+- **Download MP4** saves the video directly to your computer
+- Uses the Deno companion download for YouTube JavaScript challenge support
 - Keeps temporary download processing on the local computer
 - Includes progress and error feedback
 - Enforces a 4 GB maximum download size
@@ -127,3 +130,7 @@ LughFilm does not require an account and does not upload review projects to a Lu
 ## Updating
 
 Download the latest Windows ZIP again whenever you want the newest version. Existing projects are stored in the browser profile associated with `http://127.0.0.1:8765`, so replacing the application files normally does not remove those projects.
+
+### Building the Windows package
+
+Place the official Windows `yt-dlp.exe` and `deno.exe` binaries plus `ffmpeg.exe` in `vendor/`, then run `build-lughfilm-exe.ps1` with a JDK that includes `jpackage`. Keep yt-dlp and Deno updated for site compatibility.
