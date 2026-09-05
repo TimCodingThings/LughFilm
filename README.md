@@ -2,22 +2,25 @@
 
 LughFilm is a private, on-device video review studio. Review gameplay frame by frame, annotate decisions, mark important moments, record coaching sessions, and make basic edits without uploading source footage to a third-party service.
 
-[**Download the latest LughFilm ZIP**](https://github.com/TimCodingThings/LughFilm/raw/main/dist/LughFilm-Windows.zip)
+[**Download LughFilm for Windows**](https://github.com/TimCodingThings/LughFilm/releases/latest/download/LughFilm-Setup.exe)
 
 ## Quick start
 
-1. Download the ZIP above and extract it.
-2. Download the [Deno companion ZIP](https://github.com/TimCodingThings/LughFilm/raw/main/dist/LughFilm-Deno.zip) and extract `deno.exe` into `LughFilm/app/`. This separate download keeps each ZIP within GitHub's file-size limit.
-3. Open the `LughFilm` folder.
-4. Double-click `LughFilm.exe`. LughFilm stays available from the Windows system tray after the browser closes.
-5. LughFilm opens at `http://127.0.0.1:8765` in your browser.
-6. Drop in an MP4, open an existing local project, or use the Downloader tab.
+1. Download and run `LughFilm-Setup.exe`.
+2. Choose whether to create a desktop shortcut and finish the installation.
+3. Open LughFilm from the Start menu or desktop shortcut. LughFilm stays available from the Windows system tray after the browser closes.
+4. LughFilm opens at `http://127.0.0.1:8765` in your browser.
+5. Drop in an MP4, open an existing local project, or use the Downloader tab.
 
 If Windows SmartScreen appears for this unsigned community build, select **More info** and then **Run anyway**.
 
 Bookmarks to `127.0.0.1:8765` work while the LughFilm tray application is running. After restarting Windows or choosing **Exit LughFilm** from the tray menu, launch `LughFilm.exe` before opening the bookmark.
 
-The Windows package includes its own Java runtime, FFmpeg, and `yt-dlp`; the companion ZIP supplies Deno. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
+The Windows installer includes its own Java runtime, FFmpeg, `yt-dlp`, and Deno. Recipients do not need VS Code, Java, FFmpeg, or a separate `yt-dlp` installation.
+
+## Updates
+
+Download and run the newest `LughFilm-Setup.exe` from the Releases page. Installers use the same Windows upgrade identity, so a higher version replaces the existing installation. Projects and preferences remain in browser storage for `http://127.0.0.1:8765` and normally survive an application update.
 
 ## Requirements
 
@@ -75,7 +78,7 @@ Browser storage capacity varies by device and browser. Large projects may be lim
 - Downloads one video at a time and targets MP4 output
 - **Download to Review** creates a new LughFilm Review project when finished
 - **Download MP4** saves the video directly to your computer
-- Uses the Deno companion download for YouTube JavaScript challenge support
+- Includes Deno for YouTube JavaScript challenge support
 - Keeps temporary download processing on the local computer
 - Includes progress and error feedback
 - Enforces a 4 GB maximum download size
@@ -125,12 +128,8 @@ LughFilm does not require an account and does not upload review projects to a Lu
 - `LughFilmServer.java` — local web server and `yt-dlp` bridge
 - `start-lughfilm.bat` — source-mode Windows launcher
 - `build-lughfilm-exe.ps1` — reproducible Windows package build script
-- `dist/LughFilm-Windows.zip` — ready-to-run public Windows package
-
-## Updating
-
-Download the latest Windows ZIP again whenever you want the newest version. Existing projects are stored in the browser profile associated with `http://127.0.0.1:8765`, so replacing the application files normally does not remove those projects.
+- `dist/LughFilm-Setup.exe` — complete Windows installer, published as a GitHub Release asset
 
 ### Building the Windows package
 
-Place the official Windows `yt-dlp.exe` and `deno.exe` binaries plus `ffmpeg.exe` in `vendor/`, then run `build-lughfilm-exe.ps1` with a JDK that includes `jpackage`. Keep yt-dlp and Deno updated for site compatibility.
+Place the official Windows `yt-dlp.exe` and `deno.exe` binaries plus `ffmpeg.exe` in `vendor/`, then run `build-lughfilm-exe.ps1 -Version X.Y.Z` with a JDK that includes `jpackage`. The script downloads portable WiX 3.14 when needed. Increment the version for every published update. Keep yt-dlp and Deno updated for site compatibility.
