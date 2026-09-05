@@ -20,7 +20,9 @@ The Windows installer includes its own Java runtime, FFmpeg, `yt-dlp`, and Deno.
 
 ## Updates
 
-LughFilm does not currently download updates automatically. Exit LughFilm from its system-tray menu, download the newest `LughFilm-Setup.exe` from the Releases page, and run it. Installers use the same Windows upgrade identity, so a higher version replaces the existing installation. Projects and preferences remain in browser storage for `http://127.0.0.1:8765` and normally survive an application update.
+Use **Check for yt-dlp updates** in the Downloader tab when a supported website changes or downloads begin failing. LughFilm updates the bundled downloader from yt-dlp's stable channel without reinstalling the application. Downloader updates and video imports run one at a time so the executable cannot be replaced during a download.
+
+For LughFilm application updates, exit LughFilm from its system-tray menu, download the newest `LughFilm-Setup.exe` from the Releases page, and run it. Installers use the same Windows upgrade identity, so a higher version replaces the existing installation. Projects and preferences remain in browser storage for `http://127.0.0.1:8765` and normally survive an application update.
 
 ## Requirements
 
@@ -79,6 +81,7 @@ Browser storage capacity varies by device and browser. Large projects may be lim
 - **Download to Review** creates a new LughFilm Review project when finished
 - **Download MP4** saves the video directly to your computer
 - Includes Deno for YouTube JavaScript challenge support
+- Checks for and installs stable yt-dlp updates from inside the Downloader tab
 - Keeps temporary download processing on the local computer
 - Includes progress and error feedback
 - Enforces a 4 GB maximum download size
