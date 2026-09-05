@@ -20,7 +20,7 @@ The Windows installer includes its own Java runtime, FFmpeg, `yt-dlp`, and Deno.
 
 ## Updates
 
-Download and run the newest `LughFilm-Setup.exe` from the Releases page. Installers use the same Windows upgrade identity, so a higher version replaces the existing installation. Projects and preferences remain in browser storage for `http://127.0.0.1:8765` and normally survive an application update.
+LughFilm does not currently download updates automatically. Exit LughFilm from its system-tray menu, download the newest `LughFilm-Setup.exe` from the Releases page, and run it. Installers use the same Windows upgrade identity, so a higher version replaces the existing installation. Projects and preferences remain in browser storage for `http://127.0.0.1:8765` and normally survive an application update.
 
 ## Requirements
 
