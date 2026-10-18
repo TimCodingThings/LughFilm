@@ -90,6 +90,16 @@ Only download footage you own or have permission to use. Site compatibility depe
 
 ## Video editor
 
+Trim changes apply to playback immediately. Drag the green range handles above the video track, enter start/end times, or use **I** and **O** at the playhead. The shaded footage is outside the kept range; **Reset trim** restores the full timeline.
+
+The Trim panel's **Selected clip** menu exposes timeline position and source in/out controls for every clip, including clips too narrow to grab easily. Sliding a clip into another clip snaps it to that clip's boundary and pushes following clips aside. Cut boundaries remain attached to their source footage, so extending a trim cannot bring a removed section back.
+
+Use **Space** to play, arrow keys to step one frame, and **S** to split at the playhead. Drag a clip to move it or its edges to trim that clip. **Delete clip** closes the removed clip's gap, and **Undo / Redo** restores timeline edits. The ruler, playhead, video, overlays, and audio share one timeline; zoom and horizontal scrolling keep their positions aligned. Click **Export MP4** to open export settings and preview the result before downloading.
+
+- Live trim preview with queued seeks during dragging
+- Timeline zoom, frame stepping, split, clip movement, and undo/redo
+- Project-specific timeline and trim persistence
+- MP4 export from an independent decoder using the same timeline mapping as preview
 - Clip start/end trimming
 - Cut and remove selected portions
 - Timeline visualization for kept, trimmed, and removed sections
@@ -126,6 +136,10 @@ Admin settings are local browser preferences, not server-side user authenticatio
 LughFilm does not require an account and does not upload review projects to a LughFilm service. Videos, annotations, projects, and admin preferences stay in the local browser or local download folder unless you intentionally export or share them.
 
 ## Files
+
+- `editor-core.js` and `editor-ui.css` — editor timeline, playback/export controller, and layout sources
+- `sync-editor.ps1` — embeds the editor sources into `lughfilm.html` for the standalone app
+- `editor-model.test.mjs` and `editor-browser-check.mjs` — timeline regression tests and local Chrome checks
 
 - `lughfilm.html` — complete LughFilm interface and browser application
 - `LughFilmServer.java` — local web server and `yt-dlp` bridge

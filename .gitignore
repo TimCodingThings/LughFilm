@@ -22,3 +22,11 @@ vendor/
 build-lughfilm/
 dist/LughFilm/
 dist/LughFilm-Setup.exe
+
+# Local editor QA and rollback artifacts
+editor-browser-profile/
+chrome-lughfilm-check/
+editor-preview.png
+lughfilm-before-*.html
+lughfilm-before-*.jar
+lughfilm-export-fixed.jar
