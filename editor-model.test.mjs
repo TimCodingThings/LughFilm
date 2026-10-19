@@ -1,5 +1,6 @@
 import "./editor-core.js";
 const Timeline = globalThis.LughTimeline;
+const Scale = globalThis.LughTimelineScale;
 function equal(actual, expected, name) {
   if (
     typeof actual !== "number" || !Number.isFinite(actual) ||
@@ -8,6 +9,30 @@ function equal(actual, expected, name) {
     throw new Error(`${name}: ${actual} != ${expected}`);
   }
 }
+Deno.test("timeline grows horizontally without changing clip widths or time coordinates", () => {
+  const scale = new Scale();
+  scale.fit(10, 1000);
+  const clipWidth = scale.x(3), marker = scale.x(8);
+  scale.extend(25);
+  equal(scale.width(1000), 2500, "scrollable width");
+  equal(scale.x(3), clipWidth, "unchanged clip width");
+  equal(scale.x(8), marker, "unchanged marker position");
+  equal(scale.time(1800), 18, "pointer beyond old end");
+  scale.extend(5);
+  equal(scale.width(1000), 2500, "deleting footage does not shrink the view");
+  scale.zoom = 2;
+  equal(scale.x(3), 600, "explicit zoom changes the scale");
+  scale.fit(25, 1000);
+  equal(scale.width(1000), 1000, "explicit fit resets scrollable width");
+  equal(scale.x(25), 1000, "fit includes complete composition");
+});
+Deno.test("timeline resize keeps seconds at the same scale until an explicit fit", () => {
+  const scale = new Scale();
+  scale.fit(6, 1200);
+  equal(scale.width(600), 1200, "narrow viewport scrolls");
+  equal(scale.x(2), 400, "fixed second marker after resize");
+  equal(scale.time(1100), 5.5, "scrolled pointer mapping");
+});
 Deno.test("live trim clamps range without changing the source or resetting it", () => {
   const t = new Timeline(10);
   t.setRange(2, 7);

@@ -24,7 +24,11 @@ dist/LughFilm/
 dist/LughFilm-Setup.exe
 
 # Local editor QA and rollback artifacts
+.lughfilm-backups/
 editor-browser-profile/
+editor-redesign-browser/
+editor-redesign-preview.png
+editor-redesign-mobile.png
 chrome-lughfilm-check/
 editor-preview.png
 lughfilm-before-*.html

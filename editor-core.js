@@ -219,6 +219,27 @@ class LughTimeline {
 }
 globalThis.LughTimeline = LughTimeline;
 
+// View geometry is independent of the composition's changing duration.
+class LughTimelineScale {
+  constructor() {
+    this.basePixelsPerSecond = 0;
+    this.zoom = 1;
+    this.end = 0;
+  }
+  get pixelsPerSecond() { return this.basePixelsPerSecond * this.zoom; }
+  fit(duration, width) {
+    if (!(duration > 0 && width > 0)) return;
+    this.basePixelsPerSecond = width / duration;
+    this.zoom = 1;
+    this.end = duration;
+  }
+  extend(duration) { this.end = Math.max(this.end, duration); }
+  x(time) { return time * this.pixelsPerSecond; }
+  time(x) { return this.pixelsPerSecond ? Math.max(0, x / this.pixelsPerSecond) : 0; }
+  width(viewportWidth) { return Math.max(viewportWidth, Math.ceil(this.x(this.end))); }
+}
+globalThis.LughTimelineScale = LughTimelineScale;
+
 if (typeof document !== "undefined") {
   (() => {
     const $ = (id) => document.getElementById(id),
@@ -241,6 +262,8 @@ if (typeof document !== "undefined") {
       projectKey = "",
       history = [],
       redo = [];
+    let timelineScale = new LughTimelineScale(), dragScrollFrame = 0;
+    let activeTool = "media";
     let track = $("editTimeline");
     const stage = workspace.querySelector(".editor-stage"),
       timeline = workspace.querySelector(".editor-timeline");
@@ -411,8 +434,7 @@ if (typeof document !== "undefined") {
       $("editorTime").textContent = `${format(time)} / ${
         format(model.duration)
       }`;
-      const width = $("editorTimelineContent").clientWidth,
-        x = LughTimeline.x(time, drag?.duration ?? model.duration, width);
+      const x = timelineScale.x(time);
       $("editorTimelinePlayhead").style.transform = `translateX(${x}px)`;
       stage.classList.toggle(
         "editor-gap",
@@ -451,16 +473,19 @@ if (typeof document !== "undefined") {
       if (selected && !model.clips.some((c) => c.id === selected)) {
         selected = "";
       }
-      const duration = drag?.duration || model.duration || 1;
+      const duration = model.duration || 1;
       const content = $("editorTimelineContent");
-      content.style.width = `${zoom * 100}%`;
-      const percent = (t) => t / duration * 100;
+      const viewport = $("editorTimelineViewport");
+      if (!timelineScale.pixelsPerSecond) timelineScale.fit(model.duration, viewport.clientWidth);
+      timelineScale.extend(model.duration);
+      content.style.width = `${timelineScale.width(viewport.clientWidth)}px`;
+      const px = (t) => timelineScale.x(t);
       track.innerHTML = model.clips.map((c, i) =>
         `<button type="button" class="editor-clip${
           selected === c.id ? " selected" : ""
-        }" data-clip="${c.id}" style="left:${percent(c.at)}%;width:${
-          percent(c.end - c.start)
-        }%" aria-label="Clip ${i + 1}, source ${format(c.start)} to ${
+        }" data-clip="${c.id}" style="left:${px(c.at)}px;width:${
+          px(c.end - c.start)
+        }px" aria-label="Clip ${i + 1}, source ${format(c.start)} to ${
           format(c.end)
         }"><i data-edge="start" title="Trim clip start"></i><span>Clip ${
           i + 1
@@ -468,23 +493,28 @@ if (typeof document !== "undefined") {
           format(c.end - c.start)
         }</small></span><i data-edge="end" title="Trim clip end"></i></button>`
       ).join("");
-      const span = Math.max(.01, duration),
-        ticks = Math.min(100, Math.max(5, Math.floor(10 * zoom))),
-        step = span / ticks;
+      // Render readable ticks for the visible interval, even on a long project.
+      const desired = 90 / (timelineScale.pixelsPerSecond || 1),
+        magnitude = 10 ** Math.floor(Math.log10(desired)),
+        step = [1, 2, 5, 10].find(n => n * magnitude >= desired) * magnitude,
+        startTick = Math.max(0, Math.floor(timelineScale.time(viewport.scrollLeft) / step)),
+        endTick = Math.ceil(timelineScale.time(viewport.scrollLeft + viewport.clientWidth) / step);
+      content.style.setProperty("--editor-tick-spacing", `${px(step) / 5}px`);
+      content.style.setProperty("--editor-grid-spacing", `${px(step)}px`);
       $("editorTimelineRuler").innerHTML = Array.from(
-        { length: ticks + 1 },
-        (_, i) =>
-          `<span style="left:${i / ticks * 100}%">${format(i * step)}</span>`,
+        { length: Math.min(100, endTick - startTick + 1) },
+        (_, i) => {
+          const tick = (startTick + i) * step;
+          return `<span data-time="${tick}" style="left:${px(tick)}px">${format(tick)}</span>`;
+        },
       ).join("");
-      $("editorRange").style.left = `${percent(model.range.start)}%`;
-      $("editorRange").style.width = `${percent(model.length)}%`;
-      $("editorRangeStart").style.left = `${percent(model.range.start)}%`;
-      $("editorRangeEnd").style.left = `${percent(model.range.end)}%`;
-      $("editorTrimShadeBefore").style.width = `${percent(model.range.start)}%`;
-      $("editorTrimShadeAfter").style.left = `${percent(model.range.end)}%`;
-      $("editorTrimShadeAfter").style.width = `${
-        100 - percent(model.range.end)
-      }%`;
+      $("editorRange").style.left = `${px(model.range.start)}px`;
+      $("editorRange").style.width = `${px(model.length)}px`;
+      $("editorRangeStart").style.left = `${px(model.range.start)}px`;
+      $("editorRangeEnd").style.left = `${px(model.range.end)}px`;
+      $("editorTrimShadeBefore").style.width = `${px(model.range.start)}px`;
+      $("editorTrimShadeAfter").style.left = `${px(model.range.end)}px`;
+      $("editorTrimShadeAfter").style.width = `${Math.max(0, content.clientWidth - px(model.range.end))}px`;
       $("trimStart").max = duration;
       $("trimEnd").max = duration;
       $("trimStart").value = model.range.start.toFixed(2);
@@ -498,9 +528,18 @@ if (typeof document !== "undefined") {
       $("editorSplit").disabled = !model.at(time);
       $("editorZoomLabel").textContent = `${Math.round(zoom * 100)}%`;
       $("exportEdit").disabled = busy() || !model.length;
+      for (const button of workspace.querySelectorAll('[data-text-style],[data-add-shape],#addTextOverlay,#editorPlay,#editorPrev,#editorNext')) {
+        button.disabled = busy() || !model.length;
+      }
+      if ($("editorOpenExport")) $("editorOpenExport").disabled = busy() || !model.length;
+      if ($("editorSequenceInfo")) $("editorSequenceInfo").textContent =
+        `${model.clips.length} ${model.clips.length === 1 ? "clip" : "clips"} · ${format(model.length)}`;
+      if ($("editorExportSummary")) $("editorExportSummary").textContent =
+        `${format(model.length)} selected · MP4 · ${editorAspect === "original" ? "Original aspect ratio" : editorAspect}`;
       renderClipProperties();
       renderShapeTracks();
       renderAudioTrack();
+      scheduleLayerLayout();
       readout();
     }
     function rangeChanged(edge) {
@@ -547,16 +586,16 @@ if (typeof document !== "undefined") {
       message("Clip removed. Undo restores it.");
     }
     function changeZoom(value) {
+      if (!timelineScale.pixelsPerSecond) return;
+      const view = $("editorTimelineViewport"), leftTime = timelineScale.time(view.scrollLeft);
       zoom = Math.max(1, Math.min(8, value));
+      timelineScale.zoom = zoom;
       render();
+      view.scrollLeft = timelineScale.x(leftTime);
     }
     function pointerTime(event) {
       const rect = $("editorTimelineContent").getBoundingClientRect();
-      return LughTimeline.time(
-        event.clientX - rect.left,
-        drag?.duration ?? model.duration,
-        drag?.width ?? rect.width,
-      );
+      return Math.max(0, (event.clientX - rect.left) / (drag?.pixelsPerSecond || timelineScale.pixelsPerSecond || 1));
     }
     function renderClipProperties() {
       const select = $("editorSelectedClip"),
@@ -701,8 +740,14 @@ if (typeof document !== "undefined") {
       $("editorRedo").onclick = () => undo(true);
       $("editorZoomIn").onclick = () => changeZoom(zoom * 1.5);
       $("editorZoomOut").onclick = () => changeZoom(zoom / 1.5);
-      $("editorZoomFit").onclick = () => changeZoom(1);
-      $("editorImport").onclick = () => $("addEditorMedia").click();
+      $("editorZoomFit").onclick = () => {
+        if (drag) return;
+        timelineScale.fit(model.duration, $("editorTimelineViewport").clientWidth);
+        zoom = 1;
+        $("editorTimelineViewport").scrollLeft = 0;
+        render();
+      };
+      $("editorImport").onclick = () => $("file").click();
       $("editorOpenExport").onclick = () => {
         document.querySelector('[data-editor-tool="export"]')?.click();
         $("exportEdit").scrollIntoView({ block: "nearest" });
@@ -764,9 +809,9 @@ if (typeof document !== "undefined") {
         drag = {
           pointer: event.pointerId,
           startX: event.clientX,
+          clientX: event.clientX,
           start: pointerTime(event),
-          duration: model.duration,
-          width: $("editorTimelineContent").getBoundingClientRect().width,
+          pixelsPerSecond: timelineScale.pixelsPerSecond,
           clip: clipEl ? c : null,
           edge,
           range,
@@ -777,11 +822,11 @@ if (typeof document !== "undefined") {
         view.setPointerCapture(event.pointerId);
         event.preventDefault();
         scheduleRender();
+        dragScrollFrame = requestAnimationFrame(scrollDrag);
       });
-      view.addEventListener("pointermove", (event) => {
-        if (!drag || drag.pointer !== event.pointerId) return;
-        const target = pointerTime(event), delta = target - drag.start;
-        if (Math.abs(event.clientX - drag.startX) >= 2) drag.moved = true;
+      function updateDrag() {
+        const target = pointerTime({ clientX: drag.clientX }), delta = target - drag.start;
+        if (Math.abs(drag.clientX - drag.startX) >= 2) drag.moved = true;
         if (drag.range) {
           model.setRange(
             drag.range === "start"
@@ -827,6 +872,31 @@ if (typeof document !== "undefined") {
           model.setRange(model.range.start, model.range.end);
         } else if (!drag.clip) seek(target);
         scheduleRender();
+      }
+      function scrollDrag() {
+        dragScrollFrame = 0;
+        if (!drag) return;
+        if (drag.moved && (drag.clip || drag.range)) {
+          const rect = view.getBoundingClientRect(), zone = 28,
+            left = drag.clientX - rect.left, right = rect.right - drag.clientX;
+          const velocity = right < zone ? Math.min(18, (zone - right) * .6) :
+            left < zone ? -Math.min(18, (zone - left) * .6) : 0;
+          if (velocity > 0 && drag.clip) {
+            timelineScale.extend(timelineScale.time(view.scrollLeft + view.clientWidth + 90));
+            $("editorTimelineContent").style.width = `${timelineScale.width(view.clientWidth)}px`;
+          }
+          if (velocity) {
+            const before = view.scrollLeft;
+            view.scrollLeft += velocity;
+            if (view.scrollLeft !== before) updateDrag();
+          }
+        }
+        dragScrollFrame = requestAnimationFrame(scrollDrag);
+      }
+      view.addEventListener("pointermove", (event) => {
+        if (!drag || drag.pointer !== event.pointerId) return;
+        drag.clientX = event.clientX;
+        updateDrag();
       });
       const finishDrag = (event) => {
         if (!drag || drag.pointer !== event.pointerId) return;
@@ -836,6 +906,7 @@ if (typeof document !== "undefined") {
           persist();
         } else if (drag.clip) seek(drag.clip.at);
         drag = null;
+        cancelAnimationFrame(dragScrollFrame);
         render();
       };
       view.addEventListener("pointerup", finishDrag);
@@ -846,14 +917,19 @@ if (typeof document !== "undefined") {
       video.addEventListener("loadedmetadata", loadModel);
       video.addEventListener("loadstart", () => {
         pause();
+        drag = null;
+        cancelAnimationFrame(dragScrollFrame);
         pendingSeek = null;
         seekBusy = false;
         model = new LughTimeline(0);
+        timelineScale = new LughTimelineScale();
+        zoom = 1;
         time = 0;
         history = [];
         redo = [];
       });
-      new ResizeObserver(readout).observe(view);
+      new ResizeObserver(scheduleRender).observe(view);
+      view.addEventListener("scroll", scheduleRender);
       new MutationObserver(scheduleLayerLayout).observe($("shapeTracks"), {
         childList: true,
       });
@@ -863,6 +939,7 @@ if (typeof document !== "undefined") {
       window.addEventListener("keydown", (event) => {
         if (
           !workspace.classList.contains("open") ||
+          workspace.querySelector("dialog[open]") ||
           event.target.closest(
             'input,select,textarea,[contenteditable="true"]',
           ) || busy()
@@ -902,27 +979,274 @@ if (typeof document !== "undefined") {
         button.title = button.querySelector("span")?.textContent ||
           button.dataset.editorTool;
       });
+      mountWorkspace();
       render();
       if (video.readyState >= 1) loadModel();
     }
+    const icons = {
+      media: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4Z"/>',
+      trim: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8 8 12 12M8 16 20 4"/>',
+      transform: '<path d="M7 3v14a2 2 0 0 0 2 2h12M3 7h14a2 2 0 0 1 2 2v12"/>',
+      text: '<path d="M4 5h16M12 5v15M8 20h8"/>',
+      content: '<rect x="3" y="3" width="10" height="10" rx="2"/><circle cx="16" cy="16" r="5"/>',
+      audio: '<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',
+      export: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/>',
+      undo: '<path d="m8 4-5 5 5 5M3 9h11a6 6 0 0 1 0 12"/>',
+      redo: '<path d="m16 4 5 5-5 5m5-5H10a6 6 0 0 0 0 12"/>',
+      trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+      back: '<path d="m14 5-7 7 7 7"/>',
+      plus: '<path d="M12 4v16M4 12h16"/>',
+    };
+    const icon = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.media}</svg>`;
+    const toolNames = { media: "Your media", trim: "Trim & cut", transform: "Video", text: "Text", content: "Shapes", audio: "Audio", export: "Export" };
+    function selectTool(name, focus = false) {
+      activeTool = name;
+      const inspector = workspace.querySelector(".editor-inspector");
+      inspector.classList.toggle("export-only", name === "export");
+      inspector.classList.add("tool-filter");
+      workspace.dataset.tool = name;
+      workspace.querySelectorAll("[data-editor-tool]").forEach((button) => {
+        const active = button.dataset.editorTool === name;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+      inspector.querySelector(".editor-inspector-title").textContent = toolNames[name];
+      inspector.querySelectorAll(".edit-card").forEach((panel) => {
+        const visible = name === "export" ? panel.classList.contains("export-panel") :
+          panel.id === ({ media: "editor-media-info", trim: "editor-trim", transform: "editor-transform", text: "editor-text", content: "editor-content", audio: "editor-audio" })[name];
+        panel.classList.toggle("tool-visible", visible);
+        panel.setAttribute("aria-hidden", String(!visible));
+      });
+      // Text and shapes share the same real selection controls, without duplicating IDs.
+      const destination = name === "text" ? $("editor-text") : $("editor-content");
+      for (const node of [$("shapeEditor"), workspace.querySelector(".shape-layer-actions"), $("deleteShape")]) {
+        if (node) destination.appendChild(node);
+      }
+      inspector.scrollTop = 0;
+      if (focus) inspector.querySelector(".tool-visible input,.tool-visible button")?.focus({ preventScroll: true });
+    }
+    let thumbnailSource = "", thumbnailDecoder = null;
+    function fitPreview() {
+      const container = workspace.querySelector(".editor-stage-shell"),
+        card = workspace.querySelector(".editor-preview-card");
+      if (!container.clientWidth || !container.clientHeight) return;
+      const css = getComputedStyle(container),
+        availableW = Math.max(1, container.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight)),
+        availableH = Math.max(1, container.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom)),
+        vw = video.videoWidth || 1920, vh = video.videoHeight || 1080,
+        sideways = editRotation % 180 !== 0,
+        baseW = sideways ? vh : vw, baseH = sideways ? vw : vh,
+        ratio = ({ "16:9": 16 / 9, "9:16": 9 / 16, "1:1": 1, "4:3": 4 / 3 })[editorAspect] || baseW / baseH,
+        height = Math.min(availableH, Math.min(availableW, 1100) / ratio),
+        width = height * ratio;
+      card.style.setProperty("width", `${width}px`, "important");
+      card.style.setProperty("height", `${height}px`, "important");
+      const scale = Math.max(width / baseW, height / baseH);
+      // Use the same crop and rotation as export; overlays now sit on the actual frame.
+      video.style.setProperty("width", `${vw * scale}px`, "important");
+      video.style.setProperty("height", `${vh * scale}px`, "important");
+      video.style.inset = "auto";
+      video.style.left = "50%";
+      video.style.top = "50%";
+      video.style.transform = `translate(-50%,-50%) rotate(${editRotation}deg) scaleX(${editFlipped ? -1 : 1})`;
+      const outputW = Math.max(2, Math.floor(Math.min(baseW, baseH * ratio) / 2) * 2),
+        outputH = Math.max(2, Math.floor(outputW / ratio / 2) * 2);
+      for (const shape of editorShapes.filter(s => s.type === "text")) {
+        const text = $("editorOverlay").querySelector(`[data-shape-id="${shape.id}"] .shape-visual.text`);
+        if (text) text.style.fontSize = `${Math.max(12, shape.fontSize / 1080 * outputH) * height / outputH}px`;
+      }
+    }
+    function refreshMedia() {
+      $("editorSourceDetails").textContent = `${video.videoWidth} × ${video.videoHeight} · ${format(video.duration)} · Source video`;
+      $("editorAspectControl").value = $("editAspect").value;
+      $("editorEmptyState").hidden = !!model.duration;
+      fitPreview();
+      if (thumbnailSource === video.src) return;
+      thumbnailSource = video.src;
+      workspace.style.removeProperty("--editor-thumbnail");
+      if (thumbnailDecoder) {
+        thumbnailDecoder.pause();
+        thumbnailDecoder.removeAttribute("src");
+        thumbnailDecoder.load();
+      }
+      const decoder = document.createElement("video");
+      thumbnailDecoder = decoder;
+      decoder.muted = true;
+      decoder.preload = "auto";
+      decoder.onloadeddata = () => { decoder.currentTime = Math.min(.25, decoder.duration / 4); };
+      decoder.onseeked = () => {
+        if (decoder !== thumbnailDecoder) return;
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = 320;
+          canvas.height = Math.max(1, Math.round(320 * decoder.videoHeight / decoder.videoWidth));
+          canvas.getContext("2d").drawImage(decoder, 0, 0, canvas.width, canvas.height);
+          workspace.style.setProperty("--editor-thumbnail", `url("${canvas.toDataURL("image/jpeg", .75)}")`);
+        } catch (_) { /* The source remains usable if a thumbnail cannot be decoded. */ }
+        decoder.removeAttribute("src");
+        decoder.load();
+      };
+      decoder.src = video.src;
+    }
+    function mountWorkspace() {
+      workspace.classList.add("editor-redesign");
+      const originalLook = applyEditorLook, originalShapes = renderEditorShapes;
+      applyEditorLook = function () { originalLook(); fitPreview(); };
+      renderEditorShapes = function () { originalShapes(); fitPreview(); };
+      new ResizeObserver(fitPreview).observe(workspace.querySelector(".editor-stage-shell"));
+      const shell = workspace.querySelector(".editor-shell"),
+        inspector = workspace.querySelector(".editor-inspector"),
+        toolbar = workspace.querySelector(".editor-v2-header"),
+        topbar = workspace.querySelector(".editor-topbar"),
+        projectName = $("editorProjectName");
+      toolbar.innerHTML = `<div class="editor-brand-group"><button id="editorBack" class="editor-icon-button" title="Back to review" aria-label="Back to review">${icon("back")}</button><span class="editor-wordmark">lugh<span>film</span><small>EDITOR</small></span><span class="editor-header-divider"></span></div><div class="editor-project-heading"><span id="editorProjectSlot"></span><span class="editor-local-label"><i></i>Local project</span></div><div class="editor-header-actions"><button id="editorProjects">Projects</button><button id="editorHelp" class="editor-icon-button" aria-label="Editor keyboard shortcuts" title="Keyboard shortcuts">?</button><button id="editorOpenExport" class="editor-primary">${icon("export")}<span>Export MP4</span></button></div>`;
+      $("editorProjectSlot").appendChild(projectName);
+      $("editorBack").onclick = () => setMode("review");
+      $("editorProjects").onclick = () => { pause(); $("openProjects").click(); };
+      $("editorOpenExport").onclick = () => { selectTool("export", true); render(); };
+      // The old topbar had duplicate undo/redo IDs. Only the timeline owns these actions.
+      topbar.replaceChildren();
+      $("editorUndo").onclick = () => undo();
+      $("editorRedo").onclick = () => undo(true);
+      topbar.innerHTML = '<span class="editor-preview-label"><i></i>Preview</span><label class="editor-canvas-label">Canvas <select id="editorAspectControl" aria-label="Canvas aspect ratio"></select></label>';
+      $("editorAspectControl").innerHTML = $("editAspect").innerHTML;
+      $("editorAspectControl").onchange = (event) => {
+        if (busy()) return;
+        $("editAspect").value = event.target.value;
+        $("editAspect").dispatchEvent(new Event("change"));
+        render();
+      };
+      $("editAspect").addEventListener("change", () => { $("editorAspectControl").value = $("editAspect").value; render(); });
+      shell.appendChild(timeline);
+      const sequenceHeading = document.createElement("div");
+      sequenceHeading.className = "editor-sequence-heading";
+      sequenceHeading.innerHTML = '<strong>Timeline</strong><span id="editorSequenceInfo"></span><span class="editor-timeline-hint">Drag clip edges to trim</span>';
+      timeline.prepend(sequenceHeading);
+      for (const [id, name, label] of [["editorSplit", "trim", "Split"], ["editorDeleteClip", "trash", "Delete"], ["editorUndo", "undo", "Undo"], ["editorRedo", "redo", "Redo"]]) {
+        $(id).innerHTML = `${icon(name)}<span>${label}</span>`;
+        $(id).setAttribute("aria-label", label);
+      }
+      $("editorZoomOut").textContent = "−";
+      $("editorZoomFit").textContent = "Fit timeline";
+      $("editorStatus").textContent = "Select a clip to get started. Split, trim, and arrange your story.";
+      timeline.querySelector(".editor-timeline-foot > span:last-child").innerHTML = '<kbd>Space</kbd> Play / pause <kbd>S</kbd> Split <button id="editorTimelineHelp">All shortcuts ↗</button>';
+      workspace.querySelector(".editor-rail").setAttribute("aria-label", "Editing tools");
+      for (const name of ["media", "text", "content", "trim", "transform", "audio", "export"]) {
+        const button = workspace.querySelector(`[data-editor-tool="${name}"]`);
+        if (!button) continue;
+        workspace.querySelector(".editor-rail").appendChild(button);
+        button.innerHTML = `${icon(name)}<span>${toolNames[name]}</span>`;
+        button.title = toolNames[name];
+        button.onclick = () => selectTool(name);
+      }
+      inspector.setAttribute("aria-label", "Editing tool settings");
+      const media = $("editor-media-info");
+      media.querySelector("h3").textContent = "Project files";
+      media.querySelector(".editor-card-help").textContent = "Your footage stays on this device. Select the video to preview it.";
+      const importButton = $("editorAddMedia");
+      importButton.innerHTML = `${icon("plus")}<span>Import / replace video</span>`;
+      importButton.onclick = () => { if (!busy()) $("file").click(); };
+      media.insertBefore(importButton, media.children[1]);
+      const details = document.createElement("p");
+      details.id = "editorSourceDetails";
+      details.className = "editor-card-help";
+      details.textContent = "MP4 video · stored locally";
+      $("editorMediaTile").appendChild(details);
+      $("editorMediaTile").querySelector("small").textContent = "On your timeline";
+      $("editorMediaTile").querySelector(".media-thumb").innerHTML = '<span class="editor-media-play">▶</span><span class="editor-media-badge">VIDEO</span>';
+      $("editorAudioTile").onclick = () => selectTool("audio");
+      $("editorAudioTile").querySelector("strong").textContent = "Original audio";
+      $("editorAudioTile").querySelector("small").textContent = "Manage volume and detach audio";
+      const empty = document.createElement("div");
+      empty.id = "editorEmptyState";
+      empty.className = "editor-empty-state";
+      empty.innerHTML = `${icon("media")}<h2>A little footage. A great story.</h2><p>Import a video, make it yours, and export your final cut.</p><button class="editor-primary" id="editorEmptyImport">Import a video</button><small>MP4 · stays on this device</small>`;
+      stage.appendChild(empty);
+      $("editorEmptyImport").onclick = () => importButton.click();
+      const textPanel = $("editor-text"), textPresets = document.createElement("div");
+      textPanel.querySelector("h3").textContent = "Say it your way";
+      textPanel.querySelector(".editor-card-help").textContent = "Choose a style. Then edit your words right here.";
+      textPresets.className = "editor-text-presets";
+      textPresets.innerHTML = '<button data-text-style="title"><b>Your title here</b><span>Simple title</span></button><button data-text-style="lower"><b>A name worth knowing</b><span>Lower third</span></button><button data-text-style="caption"><b>Make every word count.</b><span>Caption</span></button>';
+      textPanel.insertBefore(textPresets, $("addTextOverlay"));
+      textPresets.onclick = (event) => {
+        const button = event.target.closest("[data-text-style]");
+        if (!button || busy() || !model.length) return;
+        addEditorShape("text");
+        const shape = editorShapes.find((s) => s.id === selectedShape), type = button.dataset.textStyle;
+        Object.assign(shape, { color: "#ffffff", text: type === "title" ? "Your title here" : type === "lower" ? "Your name" : "Make every word count.", fontSize: type === "title" ? 64 : 38, x: type === "lower" ? 8 : 15, y: type === "title" ? 40 : 75, w: 70, h: 16 });
+        renderEditorShapes();
+        selectTool("text");
+        saveState();
+        $("shapeText").focus();
+        $("shapeText").select();
+      };
+      $("addTextOverlay").onclick = () => {
+        if (busy() || !model.length) return;
+        addEditorShape("text"); selectTool("text"); $("shapeText").focus(); $("shapeText").select();
+      };
+      for (const [id, text] of [["editor-trim", "Keep the best parts"], ["editor-transform", "Make it fit"], ["editor-audio", "Find the right balance"], ["editor-content", "Add a little emphasis"]]) {
+        $(id).querySelector("h3").textContent = text;
+      }
+      // Fold advanced video controls into clear sections instead of a wall of settings.
+      for (const section of [...$("editor-transform").querySelectorAll(":scope > .inspector-section")]) {
+        const heading = section.querySelector("h4");
+        if (!heading) continue;
+        const disclosure = document.createElement("details"), summary = document.createElement("summary");
+        summary.textContent = heading.textContent;
+        heading.remove();
+        disclosure.className = "editor-disclosure";
+        disclosure.append(summary, ...section.childNodes);
+        section.replaceWith(disclosure);
+      }
+      const exportPanel = inspector.querySelector(".export-panel"), summary = document.createElement("p");
+      summary.id = "editorExportSummary";
+      summary.className = "editor-export-summary";
+      exportPanel.insertBefore(summary, exportPanel.children[1]);
+      const exportHelp = document.createElement("p");
+      exportHelp.className = "editor-card-help";
+      exportHelp.textContent = "Includes your selected range, video adjustments, text, shapes, and audio. Preview the MP4 before saving.";
+      exportPanel.appendChild(exportHelp);
+      const shortcutDialog = document.createElement("dialog");
+      shortcutDialog.className = "editor-shortcut-dialog";
+      shortcutDialog.setAttribute("aria-labelledby", "editorShortcutsTitle");
+      shortcutDialog.innerHTML = '<div><h2 id="editorShortcutsTitle">A few keys. A faster edit.</h2><button id="editorCloseHelp" aria-label="Close shortcuts">×</button></div><p>Keep your focus on the story.</p><dl><dt>Play / pause</dt><dd><kbd>Space</kbd></dd><dt>Split at playhead</dt><dd><kbd>S</kbd></dd><dt>Set range start / end</dt><dd><kbd>I</kbd> <kbd>O</kbd></dd><dt>Previous / next frame</dt><dd><kbd>←</kbd> <kbd>→</kbd></dd><dt>Jump one second</dt><dd><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></dd><dt>Undo / redo timeline edit</dt><dd><kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Shift</kbd> + <kbd>Z</kbd></dd><dt>Delete selection</dt><dd><kbd>Delete</kbd></dd></dl><p>Drag a clip to move it. Drag its edges to trim. Green handles select the range to export.</p>';
+      workspace.appendChild(shortcutDialog);
+      const openHelp = () => shortcutDialog.showModal();
+      $("editorHelp").onclick = openHelp;
+      $("editorTimelineHelp").onclick = openHelp;
+      $("editorCloseHelp").onclick = () => shortcutDialog.close();
+      shortcutDialog.onclick = (event) => { if (event.target === shortcutDialog) shortcutDialog.close(); };
+      const showSelectedOverlay = () => {
+        const shape = editorShapes.find((s) => s.id === selectedShape);
+        if (shape) { selected = ""; selectTool(shape.type === "text" ? "text" : "content"); }
+      };
+      $("editorOverlay").addEventListener("pointerdown", showSelectedOverlay);
+      $("shapeTracks").addEventListener("click", showSelectedOverlay);
+      $("editorTimelineViewport").addEventListener("pointerdown", (event) => {
+        if (!event.target.closest("[data-clip]")) return;
+        selectedShape = null;
+        renderEditorShapes();
+        selectTool("trim");
+      });
+      selectTool("media");
+    }
     function scheduleLayerLayout() {
-      const duration = model.duration || 1;
       $("shapeTracks").querySelectorAll("[data-track-shape]").forEach((el) => {
         const s = editorShapes.find((s) => s.id === el.dataset.trackShape);
         if (s) {
-          el.style.left = `${s.start / duration * 100}%`;
-          el.style.width = `${Math.max(0, s.end - s.start) / duration * 100}%`;
+          el.style.left = `${timelineScale.x(s.start)}px`;
+          el.style.width = `${timelineScale.x(Math.max(0, s.end - s.start))}px`;
         }
       });
       const audio = $("audioTrackArea").querySelector(".audio-segment");
       if (audio) {
         audio.style.left = `${
-          (audioDetached ? audioTrimStart : 0) / duration * 100
-        }%`;
+          timelineScale.x(audioDetached ? audioTrimStart : 0)
+        }px`;
         audio.style.width = `${
-          (audioDetached ? audioTrimEnd - audioTrimStart : model.duration) /
-          duration * 100
-        }%`;
+          timelineScale.x(audioDetached ? audioTrimEnd - audioTrimStart : model.duration)
+        }px`;
       }
     }
     function loadModel() {
@@ -978,6 +1302,10 @@ if (typeof document !== "undefined") {
         }
       }
       model = new LughTimeline(video.duration, state || {});
+      timelineScale = new LughTimelineScale();
+      zoom = 1;
+      $("editorTimelineViewport").scrollLeft = 0;
+      refreshMedia();
       if (!state?.version) {
         for (const cut of editorCuts) {
           model.cut(cut.start, cut.end);
@@ -1302,6 +1630,7 @@ if (typeof document !== "undefined") {
         persist();
       },
       renderLayers: scheduleLayerLayout,
+      timelineTime: (clientX) => pointerTime({ clientX }),
     };
     init();
     $("exportEdit").onclick = exportVideo;

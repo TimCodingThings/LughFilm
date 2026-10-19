@@ -55,7 +55,8 @@ await call("Emulation.setDeviceMetricsOverride", {
   mobile: false,
 });
 const localPath = Deno.cwd().replaceAll("\\", "/");
-await call("Page.navigate", { url: `file:///${localPath}/lughfilm.html` });
+await call("Page.navigate", { url: Deno.args[0] || `file:///${localPath}/lughfilm.html` });
+await call("Page.bringToFront");
 await sleep(1700);
 const doc = await call("DOM.getDocument");
 const fileInput = await call("DOM.querySelector", {
@@ -484,6 +485,38 @@ if (Math.abs(frameEnd - (frameTrim.before - .01)) > .001) {
 }
 await evaluate(`document.getElementById('editorZoomFit').click()`);
 console.log("Fine trim movement on a 0.05-second clip passed at high zoom.");
+// Extending a composition must add scroll space, preserving all time geometry.
+await evaluate(`LughEditor.pause();editorCuts=[];editorShapes=[];selectedShape=null;window.lughPendingTimeline={version:2,clips:[{id:'left',start:0,end:3,at:0},{id:'right',start:3,end:6,at:3}],range:{start:0,end:6}};document.getElementById('editorVideo').dispatchEvent(new Event('loadedmetadata'));document.getElementById('editorZoomFit').click();LughEditor.seek(0);addEditorShape('text');editorShapes[0].start=.5;editorShapes[0].end=2;renderEditorShapes()`);
+await sleep(150);
+const originalGeometry = await evaluate(`(()=>{const left=document.querySelector('[data-clip="left"]').getBoundingClientRect(),right=document.querySelector('[data-clip="right"]').getBoundingClientRect(),view=document.getElementById('editorTimelineViewport');return {clipWidth:right.width,left:left.left,rightCenter:right.left+right.width/2,y:right.top+8,edge:view.getBoundingClientRect().right-8,scrollWidth:view.scrollWidth,pps:right.width/3,overlay:document.querySelector('.shape-segment').getBoundingClientRect().width}})()`);
+await call('Input.dispatchMouseEvent', {type:'mousePressed',x:originalGeometry.rightCenter,y:originalGeometry.y,button:'left',clickCount:1});
+await call('Input.dispatchMouseEvent', {type:'mouseMoved',x:originalGeometry.edge,y:originalGeometry.y,button:'left',buttons:1});
+await sleep(450);
+await call('Input.dispatchMouseEvent', {type:'mouseReleased',x:originalGeometry.edge,y:originalGeometry.y,button:'left',clickCount:1});
+const grown = await evaluate(`({duration:LughEditor.duration,width:document.querySelector('[data-clip="right"]').getBoundingClientRect().width,leftWidth:document.querySelector('[data-clip="left"]').getBoundingClientRect().width,scroll:document.getElementById('editorTimelineViewport').scrollLeft,scrollWidth:document.getElementById('editorTimelineViewport').scrollWidth,overlay:document.querySelector('.shape-segment').getBoundingClientRect().width})`);
+if(grown.duration<=6.1||grown.scroll<=0||grown.scrollWidth<=originalGeometry.scrollWidth||Math.abs(grown.width-originalGeometry.clipWidth)>.1||Math.abs(grown.leftWidth-originalGeometry.clipWidth)>.1||Math.abs(grown.overlay-originalGeometry.overlay)>.1) throw Error('Timeline extension compressed clips or failed to scroll: '+JSON.stringify({originalGeometry,grown}));
+await evaluate(`document.getElementById('editorSelectedClip').value='right';document.getElementById('editorSelectedClip').dispatchEvent(new Event('change'));document.getElementById('editorClipPosition').value=16;document.getElementById('editorClipPosition').dispatchEvent(new Event('change'))`);
+await sleep(100);
+const positioned = await evaluate(`({duration:LughEditor.duration,width:document.querySelector('[data-clip="right"]').getBoundingClientRect().width,scrollWidth:document.getElementById('editorTimelineViewport').scrollWidth})`);
+if(Math.abs(positioned.duration-19)>.001||Math.abs(positioned.width-originalGeometry.clipWidth)>.1||positioned.scrollWidth<originalGeometry.pps*19-2) throw Error('Numeric placement refitted the time scale');
+const seekPoint = await evaluate(`(()=>{const v=document.getElementById('editorTimelineViewport');v.scrollLeft=${originalGeometry.pps}*17-v.clientWidth/2;const c=document.getElementById('editorTimelineContent').getBoundingClientRect();return {x:c.left+${originalGeometry.pps}*17,y:c.top+10}})()`);
+await call('Input.dispatchMouseEvent', {type:'mousePressed',...seekPoint,button:'left',clickCount:1});
+await call('Input.dispatchMouseEvent', {type:'mouseReleased',...seekPoint,button:'left',clickCount:1});
+if(Math.abs(await evaluate('LughEditor.time')-17)>.02) throw Error('Ruler seek after horizontal scrolling used the wrong scale');
+const scrolledHead = await evaluate(`new DOMMatrix(getComputedStyle(document.getElementById('editorTimelinePlayhead')).transform).m41`);
+if(Math.abs(scrolledHead-originalGeometry.pps*17)>1) throw Error('Playhead drifted after timeline extension');
+// The overlay's existing trim handler must also use the scrollable time scale.
+await evaluate(`document.getElementById('editorTimelineViewport').scrollLeft=0`);
+await sleep(100);
+const overlayTrim = await evaluate(`(()=>{const h=document.querySelector('.shape-segment [data-shape-trim="end"]').getBoundingClientRect();return {x:h.left+h.width/2,y:h.top+h.height/2}})()`);
+await call('Input.dispatchMouseEvent', {type:'mousePressed',...overlayTrim,button:'left',clickCount:1});
+await call('Input.dispatchMouseEvent', {type:'mouseMoved',x:overlayTrim.x+originalGeometry.pps*.5,y:overlayTrim.y,button:'left',buttons:1});
+await call('Input.dispatchMouseEvent', {type:'mouseReleased',x:overlayTrim.x+originalGeometry.pps*.5,y:overlayTrim.y,button:'left',clickCount:1});
+if(Math.abs(await evaluate('editorShapes[0].end')-2.5)>.03) throw Error('Overlay trim diverged from the video time scale');
+await evaluate(`document.getElementById('editorZoomFit').click()`);
+const fitted = await evaluate(`({content:document.getElementById('editorTimelineContent').clientWidth,viewport:document.getElementById('editorTimelineViewport').clientWidth,clip:document.querySelector('[data-clip="right"]').getBoundingClientRect().width})`);
+if(Math.abs(fitted.content-fitted.viewport)>1||fitted.clip>=originalGeometry.clipWidth) throw Error('Explicit Fit timeline did not refit the extended composition');
+console.log('Stable clip widths, growing horizontal scroll, drag edge scrolling, numeric extension, scrolled ruler/playhead, overlay trim, and explicit Fit passed.', {grown,positioned,fitted});
 await call("Page.captureScreenshot", { format: "png" }).then(async (result) => {
   const bytes = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
   await Deno.writeFile("editor-preview.png", bytes);

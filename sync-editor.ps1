@@ -19,7 +19,9 @@ $s=$s.Replace('function renderShapeTracks(){let duration=ev.duration||0;', 'func
 $s=$s.Replace('function renderAudioTrack(){let duration=ev.duration||0;', 'function renderAudioTrack(){let duration=window.LughEditor?.duration||ev.duration||0;')
 if(!$s.Contains('editorTimeline:window.LughEditor')){$s=$s.Replace('editorAspect,videoFade,audioFade,savedAt:', 'editorAspect,videoFade,audioFade,editorTimeline:window.LughEditor?.serialize(),savedAt:')}
 if(!$s.Contains('lughPendingTimeline=project.editorTimeline')){$s=$s.Replace('if(!project||!savedVideo)return;', 'if(!project||!savedVideo)return;window.lughPendingTimeline=project.editorTimeline||null;')}
-$s=$s.Replace('ev.currentTime=Math.min(v.currentTime||0,ev.duration||0);', 'if(window.LughEditor)window.LughEditor.seek(window.LughEditor.time);else ev.currentTime=Math.min(v.currentTime||0,ev.duration||0);')
+$seekBridge='if(window.LughEditor)window.LughEditor.seek(window.LughEditor.time);else '
+$legacySeek='ev.currentTime=Math.min(v.currentTime||0,ev.duration||0);'
+$s=[regex]::Replace($s,'(?:'+[regex]::Escape($seekBridge)+')*'+[regex]::Escape($legacySeek),$seekBridge+$legacySeek)
 $s=$s.Replace('}else ev.pause();if(downloading)', '}else{if(window.LughEditor)window.LughEditor.pause();else ev.pause()}if(downloading)')
 $css=[IO.File]::ReadAllText((Join-Path $root 'editor-ui.css'))
 $s=$s.Replace('let duration=ev.duration||0,t=Math.max(', 'let duration=window.LughEditor?.duration||ev.duration||0,t=Math.max(')
@@ -27,6 +29,7 @@ $s=$s.Replace('window.LughEditor?.time||ev.currentTime||0','(window.LughEditor?.
 $s=$s.Replace('const p=Math.max(0,Math.min(1,(ev.currentTime-s.start)/.35))','const p=Math.max(0,Math.min(1,((window.LughEditor?.time??ev.currentTime)-s.start)/.35))')
 $s=$s.Replace('ec.font=`bold ${Math.max(12,s.fontSize/1080*h)}px Arial`','ec.font=`bold ${Math.max(12,s.fontSize/1080*h)}px ${s.fontFamily||''Arial''}`')
 $js=[IO.File]::ReadAllText((Join-Path $root 'editor-core.js'))
+if(!$s.Contains('window.LughEditor?.timelineTime(e.clientX)')){$s=$s.Replace('(e.clientX-timelineDrag.track.left)/timelineDrag.track.width*duration','(window.LughEditor?.timelineTime(e.clientX)??((e.clientX-timelineDrag.track.left)/timelineDrag.track.width*duration))')}
 $s=$s.Replace('</body>',('<style id="lugh-editor-v2-style">'+$css+'</style><script id="lugh-editor-v2-script">'+$js+'</script></body>'))
 [IO.File]::WriteAllText($path,$s,[Text.UTF8Encoding]::new($false))
 'Embedded editor v2; retired '+$retired.Count+' legacy blocks.'

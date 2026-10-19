@@ -76,19 +76,30 @@ Browser storage capacity varies by device and browser. Large projects may be lim
 
 - Paste a supported video-site link into a dedicated Downloader tab
 - Uses local `yt-dlp` processing
-- Prefers the best available MP4 video and M4A audio streams and merges them without re-encoding
+- Prefers the best available MP4 video and M4A audio streams, then converts incompatible fallbacks to a real MP4 when needed
 - Downloads one video at a time and targets MP4 output
 - **Download to Review** creates a new LughFilm Review project when finished
-- **Download MP4** saves the video directly to your computer
+- **Download MP4** lets you rename the file first, then saves it directly to the local Windows `Downloads` folder without using OneDrive or the browser's download location
+- Estimates the selected video's file size after a link is pasted; sites that do not publish size metadata may show the estimate as unavailable
+- Optional **Compress MP4** re-encodes video with H.264/AAC and shows an approximate compressed-size projection; the original is kept automatically if it is already smaller
 - Includes Deno for YouTube JavaScript challenge support
 - Checks for and installs stable yt-dlp updates from inside the Downloader tab
 - Keeps temporary download processing on the local computer
-- Includes progress and error feedback
-- Enforces a 4 GB maximum download size
+- Shows live percentage, transferred size, speed, ETA, and a clear completion notice with the final local path
+- Retries transient network and fragment failures, and saves the last yt-dlp failure log under `%TEMP%\LughFilm\downloads\last-download.log`
+- Enforces a 4 GB limit for **Download to Review**; **Download MP4** can save larger files directly
 
 Only download footage you own or have permission to use. Site compatibility depends on the installed `yt-dlp` version and the source website.
 
 ## Video editor
+
+The editor opens as a dedicated studio inspired by the simple tool panels of 123apps and the media-and-timeline layout of Clipchamp. Open **Video Editor** and import an MP4 directly, or bring in your current Review video. **Your media**, **Text**, **Shapes**, **Trim & cut**, **Video**, and **Audio** each open one focused panel beside the preview. **Projects** opens your saved local projects; the back arrow returns to Review.
+
+Choose a title, lower third, or caption in **Text**, then edit its words and appearance in the same panel. Selecting an overlay on the preview or timeline opens its matching controls. The **Canvas** selector above the preview changes the export aspect ratio; the preview uses the same crop, rotation, and text scaling as the exported frame. Advanced color, canvas, and speed settings expand individually in **Video**.
+
+The timeline spans the workspace below the tools and preview. Select a video clip to open its position and source controls automatically. **Export MP4** opens the filename and range summary before rendering, and **?** opens the editor's keyboard shortcuts. At narrow widths, the controls move below the preview while the timeline remains visible.
+
+Moving a clip beyond the end extends the timeline horizontally while keeping clip widths and the time scale unchanged. Hold a dragged clip near either edge to scroll. **Fit timeline** explicitly fits the complete project into view; the zoom controls change the scale without changing your edits.
 
 Trim changes apply to playback immediately. Drag the green range handles above the video track, enter start/end times, or use **I** and **O** at the playhead. The shaded footage is outside the kept range; **Reset trim** restores the full timeline.
 

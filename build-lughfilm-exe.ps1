@@ -8,6 +8,18 @@ $classes = Join-Path $build "classes"
 $dist = Join-Path $root "dist"
 $installer = Join-Path $dist "LughFilm-Setup.exe"
 
+# Validate generated targets before removing any previous build output.
+foreach ($relative in @('build-lughfilm','dist\LughFilm','dist\LughFilm-Setup.exe','dist\LughFilm-Windows.zip')) {
+    $target = [IO.Path]::GetFullPath((Join-Path $root $relative))
+    $workspacePrefix = [IO.Path]::GetFullPath($root).TrimEnd('\') + '\'
+    if (!$target.StartsWith($workspacePrefix, [StringComparison]::OrdinalIgnoreCase)) { throw "Output is outside the workspace: $target" }
+    if (Test-Path -LiteralPath $target) {
+        $resolved = (Resolve-Path -LiteralPath $target).Path
+        # OneDrive uses reparse points for ordinary folders; reject actual links.
+        if ($resolved -ne $target -or (Get-Item -LiteralPath $target).LinkType) { throw "Unsafe build output: $target" }
+    }
+}
+
 Remove-Item -Recurse -Force $build -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $dist "LughFilm") -ErrorAction SilentlyContinue
 Remove-Item -Force $installer -ErrorAction SilentlyContinue
@@ -53,7 +65,14 @@ Remove-Item -Force $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $dist "LughFilm") -DestinationPath $zip -CompressionLevel Optimal
 # Keep repository downloads below GitHub's per-file limit; the app image still includes Deno.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$archive = [IO.Compression.ZipFile]::Open($zip, 'Update')
+$archive = $null
+for ($attempt = 1; $attempt -le 20 -and !$archive; $attempt++) {
+    try { $archive = [IO.Compression.ZipFile]::Open($zip, 'Update') }
+    catch [IO.IOException] {
+        if ($attempt -eq 20) { throw }
+        Start-Sleep -Milliseconds 500
+    }
+}
 try {
     $entry = $archive.Entries | Where-Object { $_.FullName -match '[/\\]deno.exe$' }
     if (!$entry) { throw "Deno is missing from the package." }
