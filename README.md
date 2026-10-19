@@ -160,4 +160,4 @@ LughFilm does not require an account and does not upload review projects to a Lu
 
 ### Building the Windows package
 
-Place the official Windows `yt-dlp.exe` and `deno.exe` binaries plus `ffmpeg.exe` in `vendor/`, then run `build-lughfilm-exe.ps1 -Version X.Y.Z` with a JDK that includes `jpackage`. The script downloads portable WiX 3.14 when needed. Increment the version for every published update. Keep yt-dlp and Deno updated for site compatibility.
+Place the official Windows `yt-dlp.exe` and `deno.exe` binaries plus `ffmpeg.exe` in `vendor/`, then run `build-lughfilm-exe.ps1` with a JDK that includes `jpackage`. The HTML's `application-version` metadata supplies the app label, portable app version, and installer version. An explicit `-Version X.Y.Z` must match that metadata. The script downloads portable WiX 3.14 when needed. Increment the HTML version for every published update. Keep yt-dlp and Deno updated for site compatibility.

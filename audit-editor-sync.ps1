@@ -17,6 +17,11 @@ function EntryBytes($archive, [string]$name) {
 }
 $htmlPath = Join-Path $root 'lughfilm.html'
 $html = [IO.File]::ReadAllText($htmlPath)
+$versionLabels = [regex]::Matches($html, '<meta name="application-version" content="([^"]+)">')
+if ($versionLabels.Count -ne 1) { throw 'Expected exactly one application-version label' }
+$appVersion = $versionLabels[0].Groups[1].Value
+if ($html.Contains('0.1.0-alpha.1') -or !$html.Contains('document.documentElement.dataset.lughfilmRelease=version')) { throw 'App identity does not use the current version metadata' }
+Write-Host "App version label: $appVersion"
 foreach ($block in @(@('style','lugh-editor-v2-style','editor-ui.css'),@('script','lugh-editor-v2-script','editor-core.js'))) {
     $matches = [regex]::Matches($html, '<'+$block[0]+' id="'+$block[1]+'">([\s\S]*?)</'+$block[0]+'>')
     if ($matches.Count -ne 1) { throw "Expected exactly one $($block[1]), found $($matches.Count)" }
@@ -34,6 +39,11 @@ $afterDirect = [regex]::Match([IO.File]::ReadAllText($htmlPath), $downloadPatter
 if ($afterDirect -cne $direct[0].Value) { throw 'Synchronization changed the standalone direct MP4 handler' }
 Write-Host 'Repeated synchronization leaves the HTML and direct MP4 handler unchanged.'
 if ($Builds) {
+    $appState = [xml][IO.File]::ReadAllText((Join-Path $root 'dist\LughFilm\app\.jpackage.xml'))
+    if ($appState.'jpackage-state'.'app-version' -ne $appVersion) { throw 'App-image version differs from the label' }
+    $installerVersion = (Get-Item -LiteralPath (Join-Path $root 'dist\LughFilm-Setup.exe')).VersionInfo.ProductVersion
+    if ($installerVersion -ne $appVersion) { throw 'Installer version differs from the label' }
+    Write-Host "App-image and installer versions match: $appVersion"
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     foreach ($relative in @('build-lughfilm\input\lughfilm.jar','dist\LughFilm\app\lughfilm.jar')) {
         $jar = [IO.Compression.ZipFile]::OpenRead((Join-Path $root $relative))
@@ -44,6 +54,11 @@ if ($Builds) {
     }
     $zip = [IO.Compression.ZipFile]::OpenRead((Join-Path $root 'dist\LughFilm-Windows.zip'))
     try {
+        $stateEntry = @($zip.Entries | Where-Object { $_.FullName.Replace('\','/') -eq 'LughFilm/app/.jpackage.xml' })
+        if ($stateEntry.Count -ne 1) { throw 'Missing portable app version metadata' }
+        $portableState = [xml]$utf8.GetString((EntryBytes $zip $stateEntry[0].FullName))
+        if ($portableState.'jpackage-state'.'app-version' -ne $appVersion) { throw 'Portable app version differs from the label' }
+        Write-Host "Portable app version matches: $appVersion"
         $jarEntry = @($zip.Entries | Where-Object { $_.FullName.Replace('\','/') -eq 'LughFilm/app/lughfilm.jar' })
         if ($jarEntry.Count -ne 1) { throw 'Portable ZIP must contain exactly one app JAR' }
         $jarBytes = EntryBytes $zip $jarEntry[0].FullName

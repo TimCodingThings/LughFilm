@@ -46,6 +46,10 @@ try {
   await viewport(1440, 1000);
   await call('Page.navigate', { url: Deno.args[0] || `file:///${Deno.cwd().replaceAll('\\', '/')}/lughfilm.html` });
   await sleep(900);
+  const sourceHtml = await Deno.readTextFile('lughfilm.html');
+  const expectedVersion = sourceHtml.match(/<meta name="application-version" content="([^"]+)">/)?.[1];
+  assert(expectedVersion && await evaluate(`document.querySelector('meta[name="application-version"]').content===${JSON.stringify(expectedVersion)}&&document.documentElement.dataset.lughfilmRelease===${JSON.stringify(expectedVersion)}&&document.title===${JSON.stringify('LughFilm v' + expectedVersion)}`), 'App title, release label, and source version differ');
+  console.log('App title and release label match version', expectedVersion);
   await click('#editorTab');
   assert(await evaluate(`document.getElementById('editorWorkspace').classList.contains('open')&&!document.getElementById('editorEmptyState').hidden&&document.getElementById('editorOpenExport').disabled`), 'Empty editor must open with an import action and disabled export');
   // Import through the editor's own file input.

@@ -10,6 +10,11 @@ $sourceInstaller = Join-Path $root 'dist\LughFilm-Setup.exe'
 $installedJar = Join-Path $install 'app\lughfilm.jar'
 $installedLauncher = Join-Path $install 'start-lughfilm.bat'
 $nativeLauncher = Join-Path $install 'LughFilm.exe'
+$appMetadata = @(
+    @((Join-Path $root 'dist\LughFilm\app\LughFilm.cfg'),(Join-Path $install 'app\LughFilm.cfg')),
+    @((Join-Path $root 'dist\LughFilm\app\.jpackage.xml'),(Join-Path $install 'app\.jpackage.xml')),
+    @((Join-Path $root 'dist\LughFilm\LughFilm.exe'),$nativeLauncher)
+)
 foreach ($required in @($sourceJar,$sourceInstaller,$installedJar,$java,(Join-Path $root 'start-lughfilm.bat'))) {
     if (!(Test-Path -LiteralPath $required -PathType Leaf)) { throw "Required update file is missing: $required" }
 }
@@ -25,6 +30,10 @@ Copy-Item -LiteralPath $installedJar -Destination (Join-Path $backup 'installed-
 if (Test-Path -LiteralPath $installedLauncher) { Copy-Item -LiteralPath $installedLauncher -Destination (Join-Path $backup 'start-lughfilm.bat') }
 if (Test-Path -LiteralPath $downloadInstaller) { Copy-Item -LiteralPath $downloadInstaller -Destination (Join-Path $backup 'downloaded-LughFilm-Setup.exe') }
 if (Test-Path -LiteralPath $shortcut) { Copy-Item -LiteralPath $shortcut -Destination (Join-Path $backup 'LughFilm.lnk') }
+foreach ($pair in $appMetadata) {
+    if (!(Test-Path -LiteralPath $pair[0])) { throw "Missing app metadata: $($pair[0])" }
+    if (Test-Path -LiteralPath $pair[1]) { Copy-Item -LiteralPath $pair[1] -Destination (Join-Path $backup ([IO.Path]::GetFileName($pair[1]))) }
+}
 
 # Only stop the LughFilm processes belonging to this installation.
 $running = @(Get-CimInstance Win32_Process | Where-Object {
@@ -41,6 +50,10 @@ for ($attempt=0;$attempt -lt 30;$attempt++) {
 Copy-Item -LiteralPath $sourceJar -Destination $installedJar -Force
 Copy-Item -LiteralPath (Join-Path $root 'start-lughfilm.bat') -Destination $installedLauncher -Force
 Copy-Item -LiteralPath $sourceInstaller -Destination $downloadInstaller -Force
+foreach ($pair in $appMetadata) {
+    Copy-Item -LiteralPath $pair[0] -Destination $pair[1] -Force
+    if ((Get-FileHash -LiteralPath $pair[0]).Hash -ne (Get-FileHash -LiteralPath $pair[1]).Hash) { throw "App metadata copy failed: $($pair[1])" }
+}
 foreach ($pair in @(@($sourceJar,$installedJar),@($sourceInstaller,$downloadInstaller),@((Join-Path $root 'start-lughfilm.bat'),$installedLauncher))) {
     if ((Get-FileHash -LiteralPath $pair[0]).Hash -ne (Get-FileHash -LiteralPath $pair[1]).Hash) { throw "Copy verification failed: $($pair[1])" }
 }

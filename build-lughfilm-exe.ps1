@@ -1,7 +1,12 @@
-param([string]$Version = "0.3.0")
+param([string]$Version)
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$versionLabel = [regex]::Match([IO.File]::ReadAllText((Join-Path $root 'lughfilm.html')), '<meta name="application-version" content="([^"]+)">')
+if (!$versionLabel.Success) { throw 'Missing application-version label in lughfilm.html' }
+$labelVersion = $versionLabel.Groups[1].Value
+if (!$Version) { $Version = $labelVersion }
+if ($Version -ne $labelVersion) { throw "Build version $Version differs from the app label $labelVersion. Update the HTML application-version first." }
 $build = Join-Path $root "build-lughfilm"
 $inputDir = Join-Path $build "input"
 $classes = Join-Path $build "classes"
@@ -30,7 +35,7 @@ Copy-Item (Join-Path $root "lughfilm.html") (Join-Path $classes "lughfilm.html")
 Copy-Item (Join-Path $root "assets\lughfilm-icon.png") (Join-Path $classes "lughfilm-icon.png")
 jar --create --file (Join-Path $inputDir "lughfilm.jar") --main-class LughFilmServer -C $classes .
 
-jpackage --type app-image --name LughFilm --input $inputDir --main-jar lughfilm.jar --main-class LughFilmServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\lughfilm-icon.ico") --java-options "-Dfile.encoding=UTF-8"
+jpackage --type app-image --name LughFilm --app-version $Version --input $inputDir --main-jar lughfilm.jar --main-class LughFilmServer --add-modules java.base,java.desktop,jdk.httpserver --dest $dist --icon (Join-Path $root "assets\lughfilm-icon.ico") --java-options "-Dfile.encoding=UTF-8"
 
 $bundledYtDlp = Join-Path $root "vendor\yt-dlp.exe"
 $bundledDeno = Join-Path $root "vendor\deno.exe"
